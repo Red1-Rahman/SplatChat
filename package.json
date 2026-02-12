@@ -1,7 +1,27 @@
 {
   "name": "splatchat",
+  "version": "1.0.0",
+  "description": "AI-powered 3D viewer with natural language camera control for Gaussian Splat models",
+  "author": {
+    "name": "Redwan Rahman",
+    "url": "https://redwan-rahman.netlify.app",
+    "github": "https://github.com/Red1-Rahman"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Red1-Rahman/SplatChat"
+  },
+  "keywords": [
+    "3d",
+    "gaussian-splatting",
+    "ai",
+    "three.js",
+    "react",
+    "camera-control",
+    "natural-language"
+  ],
+  "license": "MIT",
   "private": true,
-  "version": "0.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",

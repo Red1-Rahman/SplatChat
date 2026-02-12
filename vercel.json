@@ -1,0 +1,29 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "name": "SplatChat",
+  "version": 2,
+  "author": {
+    "name": "Redwan Rahman",
+    "email": "redwan@example.com",
+    "url": "https://redwan-rahman.netlify.app"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Red1-Rahman/SplatChat"
+  },
+  "description": "AI-powered 3D viewer with natural language camera control for Gaussian Splat models",
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "devCommand": "npm run dev",
+  "installCommand": "npm install",
+  "framework": "vite",
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "/api/:path*"
+    }
+  ],
+  "env": {
+    "GOOGLE_GENERATIVE_AI_API_KEY": "@google_generative_ai_api_key"
+  }
+}
