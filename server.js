@@ -1,6 +1,7 @@
 import express from 'express';
-import { streamText } from 'ai';
-import { google } from '@ai-sdk/google';
+import { generateObject } from 'ai';
+import { createGoogleGenerativeAI } from '@ai-sdk/google';
+import { z } from 'zod';
 import dotenv from 'dotenv';
 
 dotenv.config({ path: '.env.local' });
@@ -8,39 +9,45 @@ dotenv.config({ path: '.env.local' });
 const app = express();
 app.use(express.json());
 
-const systemPrompt = `You are a 3D product tour guide. The user can see a 3D Gaussian Splat model of a Nike shoe.
+// ✅ Proper Google AI Studio provider
+const google = createGoogleGenerativeAI({
+  apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY,
+});
 
-Available camera views:
-- "front": Front view of the shoe
-- "side": Side profile view
-- "top": Top-down view
-- "detail": Close-up detail view
+// ✅ Strict schema — Gemini MUST obey this
+const cameraSchema = z.object({
+  view: z.enum(['front', 'side', 'top', 'detail']),
+  message: z.string(),
+});
 
-When the user asks to see something, respond with JSON in this format:
-{
-  "view": "front|side|top|detail",
-  "message": "A natural response about what they're seeing"
-}
+const systemPrompt = `You are a 3D product tour guide for a Nike shoe 3D model.
+When the user asks to see something, choose the best camera view and describe it.
 
-Examples:
-User: "Show me the side"
-Response: {"view": "side", "message": "Here's the side profile of the shoe, showing the iconic Nike swoosh."}
-
-User: "I want to see the top"
-Response: {"view": "top", "message": "Looking down at the shoe from above. You can see the lacing system and overall shape."}
-
-Always respond with valid JSON containing both "view" and "message" fields.`;
+Respond ONLY with the required fields.`;
 
 app.post('/api/chat', async (req, res) => {
-  const { messages } = req.body;
+  try {
+    const { messages } = req.body;
 
-  const result = await streamText({
-    model: google('gemini-1.5-flash'),
-    system: systemPrompt,
-    messages,
-  });
+    const result = await generateObject({
+      model: google('models/gemini-2.5-flash'), // ✅ free tier best
+      schema: cameraSchema,             // ✅ forces structure
+      system: systemPrompt,
+      messages,
+      temperature: 0.2,
+      maxTokens: 80,
+    });
 
-  result.pipeDataStreamToResponse(res);
+    // ✅ This is already a JS object, not text
+    res.json({
+      data: result.object,
+      usage: result.usage,
+    });
+
+  } catch (error) {
+    console.error('API Error:', error);
+    res.status(500).json({ error: error.message });
+  }
 });
 
 const PORT = process.env.PORT || 3001;
