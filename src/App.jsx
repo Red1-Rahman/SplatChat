@@ -58,30 +58,36 @@ export default function App() {
     api: '/api/chat',
     onFinish: (message) => {
       console.log('AI Response:', message.content);
+      
+      // Helper to safely set view
+      const setViewSafe = (viewName) => {
+        const key = viewName?.toLowerCase();
+        if (key && waypoints[key]) {
+          console.log(`Matching view found: ${key}`);
+          setCurrentView(key);
+          return true;
+        }
+        console.warn(`View not found: ${viewName}`);
+        return false;
+      };
+
       try {
-        const parsed = JSON.parse(message.content);
-        console.log('Parsed JSON:', parsed);
+        // Cleaning markdown code blocks if present
+        const cleanContent = message.content.replace(/```json\n?|\n?```/g, '').trim();
+        const parsed = JSON.parse(cleanContent);
         
-        if (parsed.view && waypoints[parsed.view]) {
-          console.log('Setting view to:', parsed.view);
-          setCurrentView(parsed.view);
+        if (setViewSafe(parsed.view)) {
           message.content = parsed.message || message.content;
         }
         
       } catch (error) {
-        console.log('JSON parse error, trying regex:', error);
-        const jsonMatch = message.content.match(/\{[^}]*"view"\s*:\s*"(\w+)"[^}]*\}/);
-        if (jsonMatch) {
-          try {
-            const parsed = JSON.parse(jsonMatch[0]);
-            if (parsed.view && waypoints[parsed.view]) {
-              console.log('Regex matched view:', parsed.view);
-              setCurrentView(parsed.view);
-              message.content = parsed.message || message.content.replace(/\{.*\}/g, '').trim();
-            }
-          } catch (e) {
-            console.error('Regex parse failed:', e);
-          }
+        // Fallback regex that handles newlines and whitespace better
+        const viewMatch = message.content.match(/"view"\s*:\s*"([^"]+)"/i);
+        if (viewMatch && viewMatch[1]) {
+           if (setViewSafe(viewMatch[1])) {
+             // Try to clean up the displayed message by removing the JSON part
+             message.content = message.content.replace(/\{[\s\S]*\}/, '').trim() || "Moving camera...";
+           }
         }
       }
     }
