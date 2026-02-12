@@ -1,7 +1,8 @@
-import React, { Suspense } from 'react';
-import { Canvas } from '@react-three/fiber';
+import React, { Suspense, useEffect, useRef } from 'react';
+import { Canvas, useFrame } from '@react-three/fiber';
 import { OrbitControls, Environment, Html, useProgress } from '@react-three/drei';
 import { Splat } from '@react-three/drei';
+import { Vector3 } from 'three';
 
 function Loader() {
   const { progress } = useProgress();
@@ -20,7 +21,38 @@ function Loader() {
   );
 }
 
+function CameraController({ targetPosition, targetLookAt }) {
+  const targetPos = useRef(new Vector3(...targetPosition));
+  const targetLook = useRef(new Vector3(...targetLookAt));
+
+  useEffect(() => {
+    targetPos.current.set(...targetPosition);
+    targetLook.current.set(...targetLookAt);
+  }, [targetPosition, targetLookAt]);
+
+  useFrame((state) => {
+    state.camera.position.lerp(targetPos.current, 0.05);
+    
+    const lookAtPoint = new Vector3();
+    state.camera.getWorldDirection(lookAtPoint);
+    lookAtPoint.multiplyScalar(10).add(state.camera.position);
+    lookAtPoint.lerp(targetLook.current, 0.05);
+    
+    state.camera.lookAt(lookAtPoint);
+  });
+
+  return null;
+}
+
 export default function App() {
+  const waypoints = {
+    front: { position: [0, 2, 5], target: [0, 0, 0] },
+    side: { position: [5, 1, 0], target: [0, 0, 0] },
+    top: { position: [0, 8, 0], target: [0, 0, 0] },
+    detail: { position: [1, 0.5, 1.5], target: [0, 0, 0] }
+  };
+
+  const [currentView, setCurrentView] = React.useState('front');
   return (
     <div style={{ width: '100vw', height: '100vh' }}>
       <Canvas camera={{ position: [0, 2, 5], fov: 45 }}>
