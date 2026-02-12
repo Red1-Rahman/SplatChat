@@ -57,22 +57,32 @@ export default function App() {
   const { messages, input, handleInputChange, handleSubmit, isLoading } = useChat({
     api: '/api/chat',
     onFinish: (message) => {
+      console.log('AI Response:', message.content);
       try {
         const parsed = JSON.parse(message.content);
+        console.log('Parsed JSON:', parsed);
         
-        if (waypoints[parsed.view]) {
+        if (parsed.view && waypoints[parsed.view]) {
+          console.log('Setting view to:', parsed.view);
           setCurrentView(parsed.view);
+          message.content = parsed.message || message.content;
         }
-        
-        message.content = parsed.message;
         
       } catch (error) {
-        const viewMatch = message.content.match(/"view":\s*"(\w+)"/);
-        if (viewMatch && waypoints[viewMatch[1]]) {
-          setCurrentView(viewMatch[1]);
+        console.log('JSON parse error, trying regex:', error);
+        const jsonMatch = message.content.match(/\{[^}]*"view"\s*:\s*"(\w+)"[^}]*\}/);
+        if (jsonMatch) {
+          try {
+            const parsed = JSON.parse(jsonMatch[0]);
+            if (parsed.view && waypoints[parsed.view]) {
+              console.log('Regex matched view:', parsed.view);
+              setCurrentView(parsed.view);
+              message.content = parsed.message || message.content.replace(/\{.*\}/g, '').trim();
+            }
+          } catch (e) {
+            console.error('Regex parse failed:', e);
+          }
         }
-        message.content = message.content.replace(/\{.*\}/g, '').trim() 
-          || "Let me show you this view.";
       }
     }
   });
@@ -164,6 +174,28 @@ export default function App() {
             Send
           </button>
         </form>
+      </div>
+      
+      <div style={{
+        position: 'absolute',
+        bottom: 10,
+        right: 20,
+        color: 'white',
+        fontSize: '12px',
+        textShadow: '0 2px 4px rgba(0,0,0,0.8)'
+      }}>
+        Developed by <a 
+          href="https://redwan-rahman.netlify.app" 
+          target="_blank" 
+          rel="noopener noreferrer"
+          style={{ 
+            color: '#10b981', 
+            textDecoration: 'none',
+            fontWeight: 'bold'
+          }}
+        >
+          Redwan Rahman
+        </a>
       </div>
     </div>
   );

@@ -40,12 +40,13 @@ export default async function handler(req) {
     const { messages } = await req.json();
 
     const result = await streamText({
-      model: google('gemini-1.5-flash'),  // ← Changed from openai('gpt-4o-mini')
+      model: google('gemini-1.5-flash'),
       messages: [
         { role: 'system', content: SYSTEM_PROMPT },
         ...messages
       ],
       temperature: 0.3,
+      maxTokens: 100,
     });
 
     return result.toAIStreamResponse();
