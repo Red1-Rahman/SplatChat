@@ -2,7 +2,7 @@ import React, { Suspense, useEffect, useRef } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { OrbitControls, Environment, Html, useProgress } from '@react-three/drei';
 import { Splat } from '@react-three/drei';
-import { useChat } from 'ai/react';
+import { useChat } from 'ai';
 import { Vector3 } from 'three';
 
 function Loader() {
