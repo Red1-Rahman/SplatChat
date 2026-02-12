@@ -11,4 +11,4 @@ Try messages like:
 ---
 
 ### Target: RPG games, Interactive education etc
-### Future Plans: voice Ai for accesibility
+### Future Plans: voice Ai for accessibility
