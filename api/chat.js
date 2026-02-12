@@ -1,4 +1,4 @@
-import { openai } from '@ai-sdk/openai';
+import { google } from '@ai-sdk/google';  // ← Changed from openai
 import { streamText } from 'ai';
 
 export const runtime = 'edge';
@@ -40,7 +40,7 @@ export default async function handler(req) {
     const { messages } = await req.json();
 
     const result = await streamText({
-      model: openai('gpt-4o-mini'),
+      model: google('gemini-1.5-flash'),  // ← Changed from openai('gpt-4o-mini')
       messages: [
         { role: 'system', content: SYSTEM_PROMPT },
         ...messages
@@ -51,6 +51,7 @@ export default async function handler(req) {
     return result.toAIStreamResponse();
     
   } catch (error) {
+    console.error('AI API Error:', error);
     return new Response(
       JSON.stringify({ 
         message: "Let me show you the front view.", 
