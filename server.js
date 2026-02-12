@@ -9,38 +9,38 @@ dotenv.config({ path: '.env.local' });
 const app = express();
 app.use(express.json());
 
-// ✅ Proper Google AI Studio provider
 const google = createGoogleGenerativeAI({
   apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY,
 });
 
-// ✅ Strict schema — Gemini MUST obey this
 const cameraSchema = z.object({
   view: z.enum(['front', 'side', 'top', 'detail']),
   message: z.string(),
 });
 
 const systemPrompt = `You are a 3D product tour guide for a Nike shoe 3D model.
-When the user asks to see something, choose the best camera view and describe it.
-
-Respond ONLY with the required fields.`;
+Choose the best camera view based on what the user wants to see.`;
 
 app.post('/api/chat', async (req, res) => {
   try {
     const { messages } = req.body;
 
+    const cleanMessages = messages.map(m => ({
+      role: m.role,
+      content: m.content,
+    }));
+
     const result = await generateObject({
-      model: google('models/gemini-2.5-flash'), // ✅ free tier best
-      schema: cameraSchema,             // ✅ forces structure
+      model: google('gemini-2.5-flash'), // ✅ correct
+      schema: cameraSchema,
       system: systemPrompt,
-      messages,
+      messages: cleanMessages,
       temperature: 0.2,
       maxTokens: 80,
     });
 
-    // ✅ This is already a JS object, not text
     res.json({
-      data: result.object,
+      data: result.object,   // { view, message }
       usage: result.usage,
     });
 
