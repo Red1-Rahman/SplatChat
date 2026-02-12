@@ -2,6 +2,7 @@ import React, { Suspense, useEffect, useRef } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { OrbitControls, Environment, Html, useProgress } from '@react-three/drei';
 import { Splat } from '@react-three/drei';
+import { useChat } from 'ai/react';
 import { Vector3 } from 'three';
 
 function Loader() {
@@ -53,6 +54,28 @@ export default function App() {
   };
 
   const [currentView, setCurrentView] = React.useState('front');
+  const { messages, input, handleInputChange, handleSubmit, isLoading } = useChat({
+    api: '/api/chat',
+    onFinish: (message) => {
+      try {
+        const parsed = JSON.parse(message.content);
+        
+        if (waypoints[parsed.view]) {
+          setCurrentView(parsed.view);
+        }
+        
+        message.content = parsed.message;
+        
+      } catch (error) {
+        const viewMatch = message.content.match(/"view":\s*"(\w+)"/);
+        if (viewMatch && waypoints[viewMatch[1]]) {
+          setCurrentView(viewMatch[1]);
+        }
+        message.content = message.content.replace(/\{.*\}/g, '').trim() 
+          || "Let me show you this view.";
+      }
+    }
+  });
   return (
     <div style={{ width: '100vw', height: '100vh' }}>
       <Canvas camera={{ position: [0, 2, 5], fov: 45 }}>
@@ -78,28 +101,69 @@ export default function App() {
       </Canvas>
       <div style={{
         position: 'absolute',
-        top: 20,
+        bottom: 20,
         left: 20,
-        display: 'flex',
-        gap: '10px'
+        width: '350px',
+        background: 'rgba(0, 0, 0, 0.85)',
+        borderRadius: '12px',
+        padding: '20px',
+        color: 'white',
+        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.5)'
       }}>
-        {Object.keys(waypoints).map(view => (
+        <div style={{
+          height: '200px',
+          overflowY: 'auto',
+          marginBottom: '15px',
+          paddingRight: '10px'
+        }}>
+          {messages.map((m, i) => (
+            <div key={i} style={{
+              marginBottom: '12px',
+              padding: '8px 12px',
+              borderRadius: '8px',
+              background: m.role === 'user' ? '#2563eb' : '#374151'
+            }}>
+              <strong>{m.role === 'user' ? 'You' : 'AI Guide'}:</strong>
+              <div>{m.content}</div>
+            </div>
+          ))}
+          {isLoading && (
+            <div style={{ opacity: 0.6, fontStyle: 'italic' }}>
+              🎥 Moving camera...
+            </div>
+          )}
+        </div>
+
+        <form onSubmit={handleSubmit} style={{ display: 'flex', gap: '8px' }}>
+          <input
+            value={input}
+            onChange={handleInputChange}
+            placeholder="Ask me to show you something..."
+            style={{
+              flex: 1,
+              padding: '10px',
+              borderRadius: '6px',
+              border: 'none',
+              background: '#1f2937',
+              color: 'white'
+            }}
+          />
           <button
-            key={view}
-            onClick={() => setCurrentView(view)}
+            type="submit"
+            disabled={isLoading}
             style={{
               padding: '10px 20px',
-              background: currentView === view ? '#4CAF50' : '#333',
-              color: 'white',
+              borderRadius: '6px',
               border: 'none',
-              borderRadius: '5px',
-              cursor: 'pointer',
-              textTransform: 'capitalize'
+              background: isLoading ? '#666' : '#10b981',
+              color: 'white',
+              cursor: isLoading ? 'not-allowed' : 'pointer',
+              fontWeight: 'bold'
             }}
           >
-            {view}
+            Send
           </button>
-        ))}
+        </form>
       </div>
     </div>
   );
