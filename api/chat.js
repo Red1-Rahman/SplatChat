@@ -49,7 +49,7 @@ export default async function handler(req) {
       maxTokens: 100,
     });
 
-    return result.toAIStreamResponse();
+    return result.toUIMessageStreamResponse();
     
   } catch (error) {
     console.error('AI API Error:', error);

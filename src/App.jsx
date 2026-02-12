@@ -1,4 +1,4 @@
-import React, { Suspense, useEffect, useRef } from 'react';
+import React, { Suspense, useEffect, useRef, useState } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { OrbitControls, Environment, Html, useProgress } from '@react-three/drei';
 import { Splat } from '@react-three/drei';
@@ -25,21 +25,35 @@ function Loader() {
 function CameraController({ targetPosition, targetLookAt }) {
   const targetPos = useRef(new Vector3(...targetPosition));
   const targetLook = useRef(new Vector3(...targetLookAt));
+  const isAnimating = useRef(false);
+  const frameCount = useRef(0);
+  const MAX_FRAMES = 120; // ~2 seconds at 60fps
 
   useEffect(() => {
     targetPos.current.set(...targetPosition);
     targetLook.current.set(...targetLookAt);
+    isAnimating.current = true;
+    frameCount.current = 0;
   }, [targetPosition, targetLookAt]);
 
   useFrame((state) => {
+    if (!isAnimating.current) return;
+
+    frameCount.current++;
+
     state.camera.position.lerp(targetPos.current, 0.05);
     
     const lookAtPoint = new Vector3();
     state.camera.getWorldDirection(lookAtPoint);
     lookAtPoint.multiplyScalar(10).add(state.camera.position);
     lookAtPoint.lerp(targetLook.current, 0.05);
-    
     state.camera.lookAt(lookAtPoint);
+
+    // Stop animating once close enough or after max frames
+    const distance = state.camera.position.distanceTo(targetPos.current);
+    if (distance < 0.01 || frameCount.current > MAX_FRAMES) {
+      isAnimating.current = false;
+    }
   });
 
   return null;
@@ -53,45 +67,53 @@ export default function App() {
     detail: { position: [1, 0.5, 1.5], target: [0, 0, 0] }
   };
 
-  const [currentView, setCurrentView] = React.useState('front');
-  const { messages, input, handleInputChange, handleSubmit, isLoading } = useChat({
+  const [currentView, setCurrentView] = useState('front');
+  const [input, setInput] = useState('');
+
+  // Helper to extract text from a message's parts
+  const getMessageText = (message) => {
+    if (!message.parts) return '';
+    return message.parts
+      .filter(p => p.type === 'text')
+      .map(p => p.text)
+      .join('');
+  };
+
+  const { messages, sendMessage, status } = useChat({
     api: '/api/chat',
-    onFinish: (message) => {
-      console.log('AI Response:', message.content);
-      
-      // Helper to safely set view
-      const setViewSafe = (viewName) => {
+    onFinish: ({ message }) => {
+      const text = getMessageText(message);
+      console.log('AI raw response:', text);
+
+      const trySetView = (viewName) => {
         const key = viewName?.toLowerCase();
         if (key && waypoints[key]) {
-          console.log(`Matching view found: ${key}`);
+          console.log('Setting camera to:', key);
           setCurrentView(key);
           return true;
         }
-        console.warn(`View not found: ${viewName}`);
         return false;
       };
 
       try {
-        // Cleaning markdown code blocks if present
-        const cleanContent = message.content.replace(/```json\n?|\n?```/g, '').trim();
-        const parsed = JSON.parse(cleanContent);
-        
-        if (setViewSafe(parsed.view)) {
-          message.content = parsed.message || message.content;
-        }
-        
-      } catch (error) {
-        // Fallback regex that handles newlines and whitespace better
-        const viewMatch = message.content.match(/"view"\s*:\s*"([^"]+)"/i);
-        if (viewMatch && viewMatch[1]) {
-           if (setViewSafe(viewMatch[1])) {
-             // Try to clean up the displayed message by removing the JSON part
-             message.content = message.content.replace(/\{[\s\S]*\}/, '').trim() || "Moving camera...";
-           }
-        }
+        const clean = text.replace(/```json\n?|\n?```/g, '').trim();
+        const parsed = JSON.parse(clean);
+        trySetView(parsed.view);
+      } catch {
+        const match = text.match(/"view"\s*:\s*"([^"]+)"/i);
+        if (match) trySetView(match[1]);
       }
     }
   });
+
+  const isLoading = status === 'streaming' || status === 'loading';
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (!input.trim() || isLoading) return;
+    sendMessage({ text: input });
+    setInput('');
+  };
   return (
     <div style={{ width: '100vw', height: '100vh' }}>
       <Canvas camera={{ position: [0, 2, 5], fov: 45 }}>
@@ -132,17 +154,28 @@ export default function App() {
           marginBottom: '15px',
           paddingRight: '10px'
         }}>
-          {messages.map((m, i) => (
-            <div key={i} style={{
-              marginBottom: '12px',
-              padding: '8px 12px',
-              borderRadius: '8px',
-              background: m.role === 'user' ? '#2563eb' : '#374151'
-            }}>
-              <strong>{m.role === 'user' ? 'You' : 'AI Guide'}:</strong>
-              <div>{m.content}</div>
-            </div>
-          ))}
+          {messages.map((m, i) => {
+            const text = getMessageText(m);
+            // Try to show only the "message" field from JSON responses
+            let displayText = text;
+            try {
+              const clean = text.replace(/```json\n?|\n?```/g, '').trim();
+              const parsed = JSON.parse(clean);
+              if (parsed.message) displayText = parsed.message;
+            } catch { /* show raw text */ }
+
+            return (
+              <div key={i} style={{
+                marginBottom: '12px',
+                padding: '8px 12px',
+                borderRadius: '8px',
+                background: m.role === 'user' ? '#2563eb' : '#374151'
+              }}>
+                <strong>{m.role === 'user' ? 'You' : 'AI Guide'}:</strong>
+                <div>{displayText}</div>
+              </div>
+            );
+          })}
           {isLoading && (
             <div style={{ opacity: 0.6, fontStyle: 'italic' }}>
               🎥 Moving camera...
@@ -153,7 +186,7 @@ export default function App() {
         <form onSubmit={handleSubmit} style={{ display: 'flex', gap: '8px' }}>
           <input
             value={input}
-            onChange={handleInputChange}
+            onChange={(e) => setInput(e.target.value)}
             placeholder="Ask me to show you something..."
             style={{
               flex: 1,
