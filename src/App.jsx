@@ -60,7 +60,7 @@ export default function App() {
         
         <Suspense fallback={<Loader />}>
           <Splat 
-            src="https://huggingface.co/cakewalk/splat-data/resolve/main/nike.splat"
+            src="https://huggingface.co/cakewalk/splat-data/resolve/main/nike.splat" 
             scale={1}
             position={[0, 0, 0]}
           />
@@ -71,7 +71,36 @@ export default function App() {
         
         <OrbitControls makeDefault />
         <Environment preset="city" />
+        <CameraController 
+          targetPosition={waypoints[currentView].position}
+          targetLookAt={waypoints[currentView].target}
+        />
       </Canvas>
+      <div style={{
+        position: 'absolute',
+        top: 20,
+        left: 20,
+        display: 'flex',
+        gap: '10px'
+      }}>
+        {Object.keys(waypoints).map(view => (
+          <button
+            key={view}
+            onClick={() => setCurrentView(view)}
+            style={{
+              padding: '10px 20px',
+              background: currentView === view ? '#4CAF50' : '#333',
+              color: 'white',
+              border: 'none',
+              borderRadius: '5px',
+              cursor: 'pointer',
+              textTransform: 'capitalize'
+            }}
+          >
+            {view}
+          </button>
+        ))}
+      </div>
     </div>
   );
 }
